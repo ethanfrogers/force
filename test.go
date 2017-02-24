@@ -1,9 +1,6 @@
 package main
 
-import (
-	"fmt"
-	"strconv"
-)
+import "fmt"
 
 var cmdTest = &Command{
 	Usage: "test (all | classname...)",
@@ -32,6 +29,7 @@ func init() {
 var (
 	namespaceTestFlag = cmdTest.Flag.String("namespace", "", "namespace to run tests in")
 	verboselogging    bool
+	o                 = cmdTest.Flag.String("o", "", "Output type (json, junit)")
 )
 
 func RunTests(testRunner TestRunner, tests []string, namespace string) (output TestCoverage, err error) {
@@ -60,33 +58,48 @@ func runTests(cmd *Command, args []string) {
 		fmt.Println(output.Log)
 		fmt.Println()
 	}
-	var percent string
-	fmt.Println("Coverage:")
-	fmt.Println()
-	for index := range output.NumberLocations {
-		if output.NumberLocations[index] != 0 {
-			locations := float64(output.NumberLocations[index])
-			notCovered := float64(output.NumberLocationsNotCovered[index])
-			percent = strconv.Itoa(int((locations-notCovered)/locations*100)) + "%"
-		} else {
-			percent = "0%"
-		}
-		fmt.Println("  " + percent + "\t" + output.Name[index])
-	}
-	fmt.Println()
-	fmt.Println()
-	fmt.Println("Results:")
-	fmt.Println()
-	for index := range output.SMethodNames {
-		fmt.Println("  [PASS]  " + output.SClassNames[index] + "::" + output.SMethodNames[index])
+
+	switch *o {
+	case "junit":
+		fmt.Println(ReporterJunit(output))
+	default:
+		fmt.Println(ReporterStandard(output))
 	}
 
-	for index := range output.FMethodNames {
-		fmt.Println("  [FAIL]  " + output.FClassNames[index] + "::" + output.FMethodNames[index] + ": " + output.FMessage[index])
-		fmt.Println("    " + output.FStackTrace[index])
-	}
-	fmt.Println()
-	fmt.Println()
+	// if *o != "json" {
+	// 	var percent string
+	// 	fmt.Println("Coverage:")
+	// 	fmt.Println()
+	// 	for index := range output.NumberLocations {
+	// 		if output.NumberLocations[index] != 0 {
+	// 			locations := float64(output.NumberLocations[index])
+	// 			notCovered := float64(output.NumberLocationsNotCovered[index])
+	// 			percent = strconv.Itoa(int((locations-notCovered)/locations*100)) + "%"
+	// 		} else {
+	// 			percent = "0%"
+	// 		}
+	// 		fmt.Println("  " + percent + "\t" + output.Name[index])
+	// 	}
+	// 	fmt.Println()
+	// 	fmt.Println()
+	// 	fmt.Println("Results:")
+	// 	fmt.Println()
+	// 	for index := range output.SMethodNames {
+	// 		fmt.Println("  [PASS]  " + output.SClassNames[index] + "::" + output.SMethodNames[index])
+	// 	}
+
+	// 	for index := range output.FMethodNames {
+	// 		fmt.Println("  [FAIL]  " + output.FClassNames[index] + "::" + output.FMethodNames[index] + ": " + output.FMessage[index])
+	// 		fmt.Println("    " + output.FStackTrace[index])
+	// 	}
+	// 	fmt.Println()
+	// 	fmt.Println()
+	// } else {
+	// 	clone := output
+	// 	clone.Log = ""
+	// 	printable, _ := json.MarshalIndent(clone, "", "    ")
+	// 	fmt.Println(string(printable))
+	// }
 
 	success = len(output.FMethodNames) == 0
 
